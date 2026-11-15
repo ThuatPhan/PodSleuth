@@ -50,7 +50,7 @@ func (c *PodCollector) Collect(ctx context.Context, req collector.Request) (coll
 	res := req.Incident.Resource
 	pod, err := c.client.CoreV1().Pods(res.Namespace).Get(ctx, res.Name, metav1.GetOptions{})
 	if err != nil {
-		return terminalOrRetryable("pod get", res, err)
+		return collector.APIErrorResult("pod get", res, err)
 	}
 
 	sanitized, redacted := sanitizePod(pod)
@@ -67,22 +67,6 @@ func (c *PodCollector) Collect(ctx context.Context, req collector.Request) (coll
 		return collector.Result{}, fmt.Errorf("pod collector: %w", err)
 	}
 	return collector.Result{Evidence: []domain.Evidence{ev}, Warnings: warnings}, nil
-}
-
-// terminalOrRetryable maps an API error to a Result. Terminal errors
-// (not found, forbidden) become warnings; transient errors also return
-// an error so the caller can retry.
-func terminalOrRetryable(op string, res domain.ResourceRef, err error) (collector.Result, error) {
-	kind := collector.ClassifyError(err)
-	warning := fmt.Sprintf("%s for pod %s/%s failed (%s): %v", op, res.Namespace, res.Name, kind, err)
-	switch kind {
-	case collector.ErrKindNotFound, collector.ErrKindForbidden, collector.ErrKindUnauthorized:
-		return collector.Result{Warnings: []string{warning}}, nil
-	case collector.ErrKindCanceled:
-		return collector.Result{Warnings: []string{warning}}, err
-	default:
-		return collector.Result{Warnings: []string{warning}}, fmt.Errorf("%s: %s", op, warning)
-	}
 }
 
 // sanitizePod redacts credential-bearing env values and annotation

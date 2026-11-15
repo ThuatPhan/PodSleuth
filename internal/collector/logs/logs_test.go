@@ -176,8 +176,8 @@ func TestLogsCollectorPodNotFound(t *testing.T) {
 	c := NewLogsCollector(cs, Options{PreviousLogs: true, CurrentLogs: true}, evidence.DefaultOptions())
 
 	result, err := c.Collect(context.Background(), collector.Request{Incident: incident(), Signal: signal("app")})
-	if err != nil {
-		t.Fatalf("Collect() error = %v, want nil for not-found race", err)
+	if err == nil {
+		t.Fatal("Collect() error = nil, want not-found error (caller decides on retries)")
 	}
 	if len(result.Evidence) != 0 {
 		t.Errorf("evidence count = %d, want 0", len(result.Evidence))
@@ -195,8 +195,8 @@ func TestLogsCollectorForbidden(t *testing.T) {
 	c := NewLogsCollector(cs, Options{PreviousLogs: true, CurrentLogs: true}, evidence.DefaultOptions())
 
 	result, err := c.Collect(context.Background(), collector.Request{Incident: incident(), Signal: signal("app")})
-	if err != nil {
-		t.Fatalf("Collect() error = %v, want nil for forbidden", err)
+	if err == nil {
+		t.Fatal("Collect() error = nil, want forbidden error (caller decides on retries)")
 	}
 	if len(result.Evidence) != 0 {
 		t.Errorf("evidence count = %d, want 0", len(result.Evidence))

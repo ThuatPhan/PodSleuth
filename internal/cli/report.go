@@ -25,24 +25,20 @@ func (e *partialReportError) Error() string {
 func (e *partialReportError) ExitCode() int { return 3 }
 
 func newReportCommand(deps Deps) *cobra.Command {
-	var (
-		format string
-		dbPath string
-	)
+	var format string
 	cmd := &cobra.Command{
 		Use:   "report <incident-id>",
 		Short: "Render a persisted incident investigation report",
 		Args:  oneArg,
 		RunE: func(cmd *cobra.Command, args []string) error {
-			return runReport(cmd, deps, args[0], format, dbPath)
+			return runReport(cmd, deps, args[0], format)
 		},
 	}
 	cmd.Flags().StringVar(&format, "output", string(report.FormatMarkdown), "report format: markdown or json")
-	cmd.Flags().StringVar(&dbPath, "db", "", "path to the PodSleuth SQLite database (default: ~/.local/share/podsleuth/podsleuth.db)")
 	return cmd
 }
 
-func runReport(cmd *cobra.Command, deps Deps, incidentID, formatFlag, dbFlag string) error {
+func runReport(cmd *cobra.Command, deps Deps, incidentID, formatFlag string) error {
 	ctx := cmd.Context()
 	out := cmd.OutOrStdout()
 
@@ -50,7 +46,7 @@ func runReport(cmd *cobra.Command, deps Deps, incidentID, formatFlag, dbFlag str
 	if err != nil {
 		return &invalidInputError{err: err}
 	}
-	path, err := resolveDBPath(dbFlag)
+	path, err := config.DefaultStoragePath()
 	if err != nil {
 		return &invalidInputError{err: err}
 	}
@@ -83,14 +79,12 @@ func runReport(cmd *cobra.Command, deps Deps, incidentID, formatFlag, dbFlag str
 	return nil
 }
 
-// resolveDBPath applies the --db flag over the default location.
-func resolveDBPath(flagValue string) (string, error) {
-	if flagValue != "" {
-		return flagValue, nil
-	}
+// resolveDBPath returns the configured storage location (spec §14
+// default; the config file loader will override it later).
+func resolveDBPath() (string, error) {
 	path, err := config.DefaultStoragePath()
 	if err != nil {
-		return "", fmt.Errorf("cannot resolve the database path: %w; pass a path via --db", err)
+		return "", fmt.Errorf("cannot resolve the storage path: %w", err)
 	}
 	return path, nil
 }

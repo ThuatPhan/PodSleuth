@@ -15,6 +15,12 @@ type Hypothesis struct {
 	SuggestedChecks []string `json:"suggested_checks,omitempty"`
 }
 
+// CollectionRun statuses recorded by collectors' callers.
+const (
+	RunStatusSuccess = "success"
+	RunStatusFailed  = "failed"
+)
+
 // TimelineEvent is one ordered event in an incident's history.
 type TimelineEvent struct {
 	ID               string            `json:"id"`

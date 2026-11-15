@@ -52,7 +52,7 @@ func (c *EventsCollector) Collect(ctx context.Context, req collector.Request) (c
 
 	items, err := c.listEvents(ctx, res)
 	if err != nil {
-		return terminalOrRetryable("events list", res, err)
+		return collector.APIErrorResult("events list", res, err)
 	}
 
 	truncated := false
@@ -222,20 +222,4 @@ func (v eventView) lastTime() time.Time {
 		return *v.FirstAt
 	}
 	return time.Time{}
-}
-
-// terminalOrRetryable maps an API error to a Result. Terminal errors
-// (forbidden) become warnings; transient errors also return an error
-// so the caller can retry.
-func terminalOrRetryable(op string, res domain.ResourceRef, err error) (collector.Result, error) {
-	kind := collector.ClassifyError(err)
-	warning := fmt.Sprintf("%s for pod %s/%s failed (%s): %v", op, res.Namespace, res.Name, kind, err)
-	switch kind {
-	case collector.ErrKindForbidden, collector.ErrKindUnauthorized:
-		return collector.Result{Warnings: []string{warning}}, nil
-	case collector.ErrKindCanceled:
-		return collector.Result{Warnings: []string{warning}}, err
-	default:
-		return collector.Result{Warnings: []string{warning}}, fmt.Errorf("%s: %s", op, warning)
-	}
 }
