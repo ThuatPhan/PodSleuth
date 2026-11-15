@@ -55,10 +55,10 @@ func (f *fakeProber) ServerVersion(ctx context.Context) (*version.Info, error) {
 
 func runCommand(t *testing.T, deps Deps, args ...string) (string, error) {
 	t.Helper()
-	var out bytes.Buffer
+	var out, errOut bytes.Buffer
 	root := NewRootCommand(deps)
 	root.SetOut(&out)
-	root.SetErr(&out)
+	root.SetErr(&errOut)
 	root.SetArgs(args)
 	err := root.ExecuteContext(context.Background())
 	return out.String(), err

@@ -5,6 +5,7 @@ package collector
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/ThuatPhan/PodSleuth/internal/domain"
@@ -35,6 +36,16 @@ type Collector interface {
 // Registry selects collectors for a signal.
 type Registry interface {
 	ForSignal(signal domain.FailureSignal) []Collector
+}
+
+// APIErrorResult maps a Kubernetes API error to a Result. The warning
+// carries the classified failure and the error is always returned so
+// the caller can record a failed run and decide on retries using
+// ClassifyError.
+func APIErrorResult(op string, res domain.ResourceRef, err error) (Result, error) {
+	kind := ClassifyError(err)
+	warning := fmt.Sprintf("%s for pod %s/%s failed (%s): %v", op, res.Namespace, res.Name, kind, err)
+	return Result{Warnings: []string{warning}}, fmt.Errorf("%s: %w", op, err)
 }
 
 type registry struct {

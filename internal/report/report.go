@@ -8,6 +8,7 @@ import (
 	"fmt"
 
 	"github.com/ThuatPhan/PodSleuth/internal/domain"
+	"github.com/ThuatPhan/PodSleuth/internal/evidence"
 	"github.com/ThuatPhan/PodSleuth/internal/storage"
 )
 
@@ -90,11 +91,17 @@ func Render(data Data, format Format) (string, error) {
 	}
 }
 
-// HasPartialCollection reports whether the collected evidence shows
-// truncation or other non-success collection statuses.
+// HasPartialCollection reports whether collection was partial: any
+// evidence item with a non-success collection status, or any collection
+// run that did not succeed.
 func HasPartialCollection(data Data) bool {
 	for _, ev := range data.Evidence {
-		if ev.CollectionStatus != "success" {
+		if ev.CollectionStatus != evidence.StatusSuccess {
+			return true
+		}
+	}
+	for _, run := range data.CollectionRuns {
+		if run.Status != domain.RunStatusSuccess {
 			return true
 		}
 	}

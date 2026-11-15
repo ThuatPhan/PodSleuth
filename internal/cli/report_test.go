@@ -18,9 +18,11 @@ import (
 	sqlitestore "github.com/ThuatPhan/PodSleuth/internal/storage/sqlite"
 )
 
-// seedStore opens a temp SQLite store and persists one incident with
-// evidence, analysis, timeline and a collection run.
-func seedStore(t *testing.T) (storage.Store, string) {
+// seedStore opens a temp SQLite store, persists one incident with
+// evidence, analysis, timeline and a collection run, and returns Deps
+// whose NewStore opens the same database (the CLI's own open acts as a
+// reopen from disk).
+func seedStore(t *testing.T) (Deps, storage.Store, string) {
 	t.Helper()
 	path := filepath.Join(t.TempDir(), "podsleuth.db")
 	store, err := sqlitestore.Open(path)
@@ -28,6 +30,9 @@ func seedStore(t *testing.T) (storage.Store, string) {
 		t.Fatal(err)
 	}
 	t.Cleanup(func() { _ = store.Close() })
+	deps := Deps{NewStore: func(string) (storage.Store, error) {
+		return sqlitestore.Open(path)
+	}}
 	ctx := context.Background()
 
 	now := time.Date(2026, 11, 15, 12, 0, 0, 0, time.UTC)
@@ -93,14 +98,14 @@ func seedStore(t *testing.T) (storage.Store, string) {
 	}); err != nil {
 		t.Fatal(err)
 	}
-	return store, path
+	return deps, store, path
 }
 
 // TestReportCommandAfterReopen seeds a database, closes it, reopens
 // it, and runs the actual CLI report command against the reopened
 // database in both formats.
 func TestReportCommandAfterReopen(t *testing.T) {
-	_, path := seedStore(t)
+	deps, _, path := seedStore(t)
 
 	// Close the seeding store; the CLI must open the database itself.
 	// seedStore registered a cleanup Close, so reopen a fresh handle
@@ -120,8 +125,7 @@ func TestReportCommandAfterReopen(t *testing.T) {
 		t.Fatalf("Close() error = %v", err)
 	}
 
-	deps := Deps{}
-	out, err := runCommand(t, deps, "report", "inc-1", "--db", path)
+	out, err := runCommand(t, deps, "report", "inc-1")
 	if err != nil {
 		t.Fatalf("report (markdown) error = %v", err)
 	}
@@ -138,7 +142,7 @@ func TestReportCommandAfterReopen(t *testing.T) {
 		}
 	}
 
-	jsonOut, err := runCommand(t, deps, "report", "inc-1", "--db", path, "--output", "json")
+	jsonOut, err := runCommand(t, deps, "report", "inc-1", "--output", "json")
 	if err != nil {
 		t.Fatalf("report (json) error = %v", err)
 	}
@@ -160,10 +164,9 @@ func TestReportCommandAfterReopen(t *testing.T) {
 }
 
 func TestReportCommandMarkdown(t *testing.T) {
-	_, path := seedStore(t)
-	deps := Deps{}
+	deps, _, _ := seedStore(t)
 
-	out, err := runCommand(t, deps, "report", "inc-1", "--db", path)
+	out, err := runCommand(t, deps, "report", "inc-1")
 	if err != nil {
 		t.Fatalf("report error = %v", err)
 	}
@@ -183,10 +186,9 @@ func TestReportCommandMarkdown(t *testing.T) {
 }
 
 func TestReportCommandJSON(t *testing.T) {
-	_, path := seedStore(t)
-	deps := Deps{}
+	deps, _, _ := seedStore(t)
 
-	out, err := runCommand(t, deps, "report", "inc-1", "--db", path, "--output", "json")
+	out, err := runCommand(t, deps, "report", "inc-1", "--output", "json")
 	if err != nil {
 		t.Fatalf("report error = %v", err)
 	}
@@ -203,10 +205,9 @@ func TestReportCommandJSON(t *testing.T) {
 }
 
 func TestReportCommandUnknownIncident(t *testing.T) {
-	_, path := seedStore(t)
-	deps := Deps{}
+	deps, _, _ := seedStore(t)
 
-	_, err := runCommand(t, deps, "report", "missing", "--db", path)
+	_, err := runCommand(t, deps, "report", "missing")
 	if err == nil {
 		t.Fatal("report error = nil, want error")
 	}
@@ -219,10 +220,9 @@ func TestReportCommandUnknownIncident(t *testing.T) {
 }
 
 func TestReportCommandInvalidFormat(t *testing.T) {
-	_, path := seedStore(t)
-	deps := Deps{}
+	deps, _, _ := seedStore(t)
 
-	_, err := runCommand(t, deps, "report", "inc-1", "--db", path, "--output", "html")
+	_, err := runCommand(t, deps, "report", "inc-1", "--output", "html")
 	if err == nil {
 		t.Fatal("report error = nil, want error")
 	}
@@ -235,19 +235,19 @@ func TestReportCommandInvalidFormat(t *testing.T) {
 }
 
 func TestReportCommandArgumentValidation(t *testing.T) {
-	_, path := seedStore(t)
-	deps := Deps{}
+	deps, _, _ := seedStore(t)
 
-	if _, err := runCommand(t, deps, "report", "--db", path); err == nil || exitCodeOf(err) != 2 {
+	if _, err := runCommand(t, deps, "report"); err == nil || exitCodeOf(err) != 2 {
 		t.Errorf("no args: err = %v, want exit 2", err)
 	}
-	if _, err := runCommand(t, deps, "report", "a", "b", "--db", path); err == nil || exitCodeOf(err) != 2 {
+	if _, err := runCommand(t, deps, "report", "a", "b"); err == nil || exitCodeOf(err) != 2 {
 		t.Errorf("two args: err = %v, want exit 2", err)
 	}
 }
 
 func TestReportCommandPartialCollection(t *testing.T) {
-	// A fresh store seeded with a truncated evidence item.
+	// A fresh store seeded with a truncated evidence item; the CLI
+	// opens it through the injected constructor.
 	path := filepath.Join(t.TempDir(), "podsleuth.db")
 	store, err := sqlitestore.Open(path)
 	if err != nil {
@@ -274,7 +274,10 @@ func TestReportCommandPartialCollection(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	out, err := runCommand(t, Deps{}, "report", "inc-1", "--db", path)
+	deps := Deps{NewStore: func(string) (storage.Store, error) {
+		return sqlitestore.Open(path)
+	}}
+	out, err := runCommand(t, deps, "report", "inc-1")
 	if err == nil {
 		t.Fatal("report error = nil, want partial-collection error (exit 3)")
 	}
@@ -295,8 +298,10 @@ func TestReportCommandPartialCollection(t *testing.T) {
 }
 
 func TestReportCommandStorageOpenFailure(t *testing.T) {
-	deps := Deps{}
-	_, err := runCommand(t, deps, "report", "inc-1", "--db", "/nonexistent-dir/nested/db.sqlite")
+	deps := Deps{NewStore: func(string) (storage.Store, error) {
+		return nil, errors.New("disk unavailable")
+	}}
+	_, err := runCommand(t, deps, "report", "inc-1")
 	if err == nil {
 		t.Fatal("report error = nil, want error")
 	}

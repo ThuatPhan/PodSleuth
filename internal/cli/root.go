@@ -8,8 +8,10 @@ import (
 
 	"github.com/spf13/cobra"
 	"k8s.io/apimachinery/pkg/version"
+	"k8s.io/client-go/kubernetes"
 
 	"github.com/ThuatPhan/PodSleuth/internal/config"
+	"github.com/ThuatPhan/PodSleuth/internal/kube"
 	"github.com/ThuatPhan/PodSleuth/internal/storage"
 	sqlitestore "github.com/ThuatPhan/PodSleuth/internal/storage/sqlite"
 )
@@ -45,6 +47,10 @@ type Deps struct {
 	// NewStore overrides the storage constructor used by the report
 	// command. When nil, the SQLite implementation is used.
 	NewStore func(path string) (storage.Store, error)
+
+	// NewClientset overrides the Kubernetes client constructor used by
+	// the investigate command. When nil, the kube factory is used.
+	NewClientset func(cfg *config.Config) (kubernetes.Interface, kube.ContextInfo, error)
 }
 
 // Prober verifies Kubernetes API connectivity.
@@ -75,6 +81,9 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	root.AddCommand(newDoctorCommand(deps, func() (*config.Config, error) {
 		return config.Load(config.Options{Kubeconfig: kubeconfig, Context: kubeCtx})
 	}))
+	root.AddCommand(newInvestigateCommand(deps, func() (*config.Config, error) {
+		return config.Load(config.Options{Kubeconfig: kubeconfig, Context: kubeCtx})
+	}))
 	root.AddCommand(newReportCommand(deps))
 
 	return root
@@ -87,6 +96,24 @@ func (d Deps) newStore(path string) (storage.Store, error) {
 		return d.NewStore(path)
 	}
 	return sqlitestore.Open(path)
+}
+
+// newClientset builds the Kubernetes client and resolves the active
+// context identity, honoring the injected override.
+func (d Deps) newClientset(cfg *config.Config) (kubernetes.Interface, kube.ContextInfo, error) {
+	if d.NewClientset != nil {
+		return d.NewClientset(cfg)
+	}
+	factory := kube.NewFactory(cfg)
+	cs, err := factory.Clientset()
+	if err != nil {
+		return nil, kube.ContextInfo{}, err
+	}
+	info, err := factory.CurrentContext()
+	if err != nil {
+		return nil, kube.ContextInfo{}, err
+	}
+	return cs, info, nil
 }
 
 // Execute runs the PodSleuth CLI with the given arguments.
