@@ -10,7 +10,55 @@ import (
 // independent of Kubernetes API types.
 type PodView struct {
 	Metadata PodMeta       `json:"metadata"`
+	Spec     PodSpecView   `json:"spec"`
 	Status   PodStatusView `json:"status"`
+}
+
+// PodSpecView is the Pod spec needed by detection and analysis.
+type PodSpecView struct {
+	NodeName       string              `json:"nodeName,omitempty"`
+	Containers     []ContainerSpecView `json:"containers,omitempty"`
+	InitContainers []ContainerSpecView `json:"initContainers,omitempty"`
+}
+
+// ContainerSpecView is one container's spec, limited to fields used by
+// analysis.
+type ContainerSpecView struct {
+	Name           string     `json:"name,omitempty"`
+	Image          string     `json:"image,omitempty"`
+	LivenessProbe  *ProbeView `json:"livenessProbe,omitempty"`
+	ReadinessProbe *ProbeView `json:"readinessProbe,omitempty"`
+	StartupProbe   *ProbeView `json:"startupProbe,omitempty"`
+}
+
+// ProbeView is a presence-only view of a probe definition; MVP rules
+// only need to know whether a probe is configured.
+type ProbeView struct{}
+
+// Probe returns the probe of the given kind ("liveness", "readiness"
+// or "startup") configured on the container, if any.
+func (p *PodView) Probe(container, kind string) *ProbeView {
+	for _, c := range p.AllSpecContainers() {
+		if c.Name != container {
+			continue
+		}
+		switch kind {
+		case "liveness":
+			return c.LivenessProbe
+		case "readiness":
+			return c.ReadinessProbe
+		case "startup":
+			return c.StartupProbe
+		}
+	}
+	return nil
+}
+
+func (p *PodView) AllSpecContainers() []ContainerSpecView {
+	out := make([]ContainerSpecView, 0, len(p.Spec.Containers)+len(p.Spec.InitContainers))
+	out = append(out, p.Spec.Containers...)
+	out = append(out, p.Spec.InitContainers...)
+	return out
 }
 
 // PodMeta is the Pod metadata needed for detection and identity.

@@ -1,1 +1,25 @@
 cluster.yaml
+
+# Go build and test artifacts
+/podsleuth
+/podsleuth.exe
+*.test
+*.out
+/bin/
+/dist/
+
+# Coverage
+coverage.out
+coverage.html
+*.cover
+
+# Local runtime data (SQLite)
+*.db
+*.sqlite
+*.sqlite3
+
+# OS and editor files
+.DS_Store
+.idea/
+.vscode/
+*.swp
