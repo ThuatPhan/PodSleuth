@@ -73,8 +73,8 @@ func (r *SchedRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.H
 			"node capacity, taints and affinity details (node context not collected in MVP)",
 		},
 		SuggestedChecks: checks(input,
-			"kubectl describe pod %%s -n %%s  # FailedScheduling event message",
-			"kubectl get events -n %%s --field-selector involvedObject.name=%s  # scheduling events",
+			"kubectl describe pod {pod} -n {ns}  # FailedScheduling event message",
+			"kubectl get events --field-selector involvedObject.name={pod} -n {ns}  # scheduling events",
 		),
 	}, nil
 }

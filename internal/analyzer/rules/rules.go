@@ -5,7 +5,6 @@ package rules
 
 import (
 	"encoding/json"
-	"fmt"
 	"strings"
 	"time"
 
@@ -187,13 +186,15 @@ func waitingReason(cs domain.ContainerStatus) (string, bool) {
 }
 
 // checks builds read-only kubectl verification commands for the
-// incident's pod.
+// incident's pod. Lines use {pod} and {ns} placeholders to avoid
+// positional format bugs.
 func checks(input analyzer.Input, lines ...string) []string {
 	name := input.Incident.Resource.Name
 	namespace := input.Incident.Resource.Namespace
+	replacer := strings.NewReplacer("{pod}", name, "{ns}", namespace)
 	out := make([]string, 0, len(lines))
 	for _, l := range lines {
-		out = append(out, fmt.Sprintf(l, name, namespace))
+		out = append(out, replacer.Replace(l))
 	}
 	return out
 }

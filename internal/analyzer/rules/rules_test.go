@@ -548,6 +548,31 @@ func TestAllRulesRegistered(t *testing.T) {
 	}
 }
 
+// TestSuggestedChecksAreRendered verifies that every fired rule's
+// suggested checks have their placeholders resolved: no format
+// directives or unreplaced markers may reach reports.
+func TestSuggestedChecksAreRendered(t *testing.T) {
+	pod := podFixture(corev1.PodStatus{
+		ContainerStatuses: []corev1.ContainerStatus{cstatus("app", 5, waiting("CrashLoopBackOff"), terminated(1, "Error"))},
+	}, corev1.PodSpec{})
+	input := analyzer.Input{Incident: testIncident(), Evidence: []domain.Evidence{podEvItem(t, "ev-pod", pod)}}
+
+	for _, rule := range All() {
+		h := evaluate(t, rule, input)
+		if h == nil {
+			continue
+		}
+		for _, c := range h.SuggestedChecks {
+			if strings.Contains(c, "%s") || strings.Contains(c, "%!") || strings.Contains(c, "{pod}") || strings.Contains(c, "{ns}") {
+				t.Errorf("rule %s produced an unrendered check: %q", rule.ID(), c)
+			}
+			if !strings.Contains(c, "web-1") && !strings.Contains(c, "-n app") {
+				t.Errorf("rule %s check missing incident identity: %q", rule.ID(), c)
+			}
+		}
+	}
+}
+
 func TestUnparsableEvidenceDoesNotFire(t *testing.T) {
 	bad := domain.Evidence{
 		ID: "ev-bad", IncidentID: "inc-1", Kind: "pod",

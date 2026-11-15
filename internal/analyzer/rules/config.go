@@ -71,8 +71,8 @@ func (r *ConfigRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.
 		EvidenceIDs:     evidenceIDs,
 		MissingEvidence: missing,
 		SuggestedChecks: checks(input,
-			"kubectl get pod %%s -n %%s -o jsonpath='{.spec.containers[*].envFrom}{.spec.containers[*].env[*].valueFrom}'  # config references (names only)",
-			"kubectl get configmaps,secrets -n %s  # verify referenced objects exist (names only)",
+			"kubectl get pod {pod} -n {ns} -o jsonpath='{.spec.containers[*].envFrom}{.spec.containers[*].env[*].valueFrom}'  # config references (names only)",
+			"kubectl get configmaps,secrets -n {ns}  # verify referenced objects exist (names only)",
 		),
 	}, nil
 }

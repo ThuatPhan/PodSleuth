@@ -36,8 +36,8 @@ func (r *EvictRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.H
 			"node conditions and pressure details (node context not collected in MVP)",
 		},
 		SuggestedChecks: checks(input,
-			"kubectl describe pod %%s -n %%s  # eviction reason and node name",
-			"kubectl get events -n %%s --field-selector involvedObject.name=%s  # eviction events",
+			"kubectl describe pod {pod} -n {ns}  # eviction reason and node name",
+			"kubectl get events --field-selector involvedObject.name={pod} -n {ns}  # eviction events",
 		),
 	}, nil
 }

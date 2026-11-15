@@ -64,8 +64,8 @@ func (r *CrashRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.H
 			EvidenceIDs:     evidenceIDs,
 			MissingEvidence: missing,
 			SuggestedChecks: checks(input,
-				"kubectl logs %%s -n %%s --previous  # output of the last terminated instance",
-				"kubectl describe pod %%s -n %%s  # termination reason and restart count",
+				"kubectl logs {pod} -n {ns} --previous  # output of the last terminated instance",
+				"kubectl describe pod {pod} -n {ns}  # termination reason and restart count",
 			),
 		}, nil
 	}
