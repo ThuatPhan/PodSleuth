@@ -70,8 +70,8 @@ func (r *ProbeRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.H
 		EvidenceIDs:     evidenceIDs,
 		MissingEvidence: missing,
 		SuggestedChecks: checks(input,
-			"kubectl describe pod %%s -n %%s  # probe configuration and events",
-			"kubectl logs %%s -n %%s --previous  # output before the probe kill",
+			"kubectl describe pod {pod} -n {ns}  # probe configuration and events",
+			"kubectl logs {pod} -n {ns} --previous  # output before the probe kill",
 		),
 	}, nil
 }

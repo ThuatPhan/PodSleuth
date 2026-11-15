@@ -51,8 +51,8 @@ func (r *OOMRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.Hyp
 				"memory usage metrics (not collected in MVP)",
 			},
 			SuggestedChecks: checks(input,
-				"kubectl describe pod %s -n %s  # Last State: OOMKilled, memory limits",
-				"kubectl top pods -n %s  # current usage, if metrics-server is installed",
+				"kubectl describe pod {pod} -n {ns}  # Last State: OOMKilled, memory limits",
+				"kubectl top pods -n {ns}  # current usage, if metrics-server is installed",
 			),
 		}, nil
 	}

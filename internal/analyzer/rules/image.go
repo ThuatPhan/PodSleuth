@@ -77,8 +77,8 @@ func (r *ImageRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.H
 		EvidenceIDs:     evidenceIDs,
 		MissingEvidence: missing,
 		SuggestedChecks: checks(input,
-			"kubectl get pod %%s -n %%s -o jsonpath='{.spec.containers[*].image}'  # image references",
-			"kubectl describe pod %%s -n %%s  # pull failure events",
+			"kubectl get pod {pod} -n {ns} -o jsonpath='{.spec.containers[*].image}'  # image references",
+			"kubectl describe pod {pod} -n {ns}  # pull failure events",
 		),
 	}, nil
 }

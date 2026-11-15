@@ -57,6 +57,16 @@ func Load(opts Options) (*Config, error) {
 	return cfg, nil
 }
 
+// DefaultStoragePath returns the default SQLite database location
+// (~/.local/share/podsleuth/podsleuth.db).
+func DefaultStoragePath() (string, error) {
+	home, err := os.UserHomeDir()
+	if err != nil {
+		return "", fmt.Errorf("cannot determine home directory for the default storage path: %w", err)
+	}
+	return filepath.Join(home, ".local", "share", "podsleuth", "podsleuth.db"), nil
+}
+
 // resolveKubeconfigPath applies the kubeconfig path precedence:
 // explicit flag, KUBECONFIG env (first entry), then ~/.kube/config.
 func resolveKubeconfigPath(explicit string) (string, error) {

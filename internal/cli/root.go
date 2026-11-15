@@ -10,6 +10,8 @@ import (
 	"k8s.io/apimachinery/pkg/version"
 
 	"github.com/ThuatPhan/PodSleuth/internal/config"
+	"github.com/ThuatPhan/PodSleuth/internal/storage"
+	sqlitestore "github.com/ThuatPhan/PodSleuth/internal/storage/sqlite"
 )
 
 // ExitCoder lets errors control the process exit code.
@@ -39,6 +41,10 @@ type Deps struct {
 	// Prober overrides the connectivity prober used by the doctor
 	// command. When nil, the kube factory is used.
 	Prober Prober
+
+	// NewStore overrides the storage constructor used by the report
+	// command. When nil, the SQLite implementation is used.
+	NewStore func(path string) (storage.Store, error)
 }
 
 // Prober verifies Kubernetes API connectivity.
@@ -69,8 +75,18 @@ func NewRootCommand(deps Deps) *cobra.Command {
 	root.AddCommand(newDoctorCommand(deps, func() (*config.Config, error) {
 		return config.Load(config.Options{Kubeconfig: kubeconfig, Context: kubeCtx})
 	}))
+	root.AddCommand(newReportCommand(deps))
 
 	return root
+}
+
+// newStore builds the storage implementation, honoring the injected
+// override.
+func (d Deps) newStore(path string) (storage.Store, error) {
+	if d.NewStore != nil {
+		return d.NewStore(path)
+	}
+	return sqlitestore.Open(path)
 }
 
 // Execute runs the PodSleuth CLI with the given arguments.
@@ -93,6 +109,14 @@ func exitCodeOf(err error) int {
 func noArgs(cmd *cobra.Command, args []string) error {
 	if len(args) > 0 {
 		return &invalidInputError{err: fmt.Errorf("unknown command %q for %q", args[0], cmd.CommandPath())}
+	}
+	return nil
+}
+
+// oneArg requires exactly one positional argument.
+func oneArg(cmd *cobra.Command, args []string) error {
+	if len(args) != 1 {
+		return &invalidInputError{err: fmt.Errorf("accepts exactly 1 argument, received %d", len(args))}
 	}
 	return nil
 }

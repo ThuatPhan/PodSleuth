@@ -38,8 +38,8 @@ func (r *PVCRule) Evaluate(_ context.Context, input analyzer.Input) (*domain.Hyp
 			"PVC status and storage class details (storage context not collected in MVP)",
 		},
 		SuggestedChecks: checks(input,
-			"kubectl get pvc -n %s  # PVC phase",
-			"kubectl describe pod %%s -n %%s  # mount events",
+			"kubectl get pvc -n {ns}  # PVC phase",
+			"kubectl describe pod {pod} -n {ns}  # mount events",
 		),
 	}, nil
 }
