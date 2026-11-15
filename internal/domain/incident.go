@@ -45,6 +45,8 @@ type Incident struct {
 	FirstSeenAt   time.Time      `json:"first_seen_at"`
 	LastSeenAt    time.Time      `json:"last_seen_at"`
 	ResolvedAt    *time.Time     `json:"resolved_at,omitempty"`
+	CreatedAt     time.Time      `json:"created_at"`
+	UpdatedAt     time.Time      `json:"updated_at"`
 	Summary       string         `json:"summary,omitempty"`
 }
 

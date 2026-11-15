@@ -105,6 +105,7 @@ func (m *Manager) recordSignal(ctx context.Context, s domain.FailureSignal, pod 
 	if found {
 		if inc, ok := m.incidents[id]; ok {
 			inc.LastSeenAt = now
+			inc.UpdatedAt = now
 			m.resetRecovery(id)
 		}
 		return nil
@@ -130,6 +131,8 @@ func (m *Manager) createIncident(s domain.FailureSignal, pod *domain.PodView, no
 		Resource:    s.Resource,
 		FirstSeenAt: now,
 		LastSeenAt:  now,
+		CreatedAt:   now,
+		UpdatedAt:   now,
 		Summary:     summary(s),
 	}
 	if container := s.Attributes["container"]; container != "" {
@@ -206,6 +209,7 @@ func (m *Manager) resolve(ctx context.Context, id string, now time.Time) {
 	inc.Status = domain.StatusResolved
 	resolvedAt := now
 	inc.ResolvedAt = &resolvedAt
+	inc.UpdatedAt = now
 	delete(m.recovery, id)
 	// EndEpisode errors are intentionally ignored: the incident is
 	// already resolved, and a stale dedup entry only delays a future
